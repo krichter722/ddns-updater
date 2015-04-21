@@ -59,7 +59,12 @@ setup(
     name = strato_ddns_updater_globals.app_name,
     version = strato_ddns_updater_globals.app_version_string,
     packages = ["."],
-    install_requires = ["cheetah", "plac>=0.9.1", "beautifulsoup4", "python-essentials", ],
+    install_requires = ["cheetah", "plac>=0.9.1"],
+    entry_points={
+        'console_scripts': [
+            '%s = strato_ddns_updater:main' % (strato_ddns_updater_globals.app_name, ),
+        ],
+    },
     
     # metadata for upload to PyPI
     author = "Karl-Philipp Richter",

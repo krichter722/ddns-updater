@@ -28,9 +28,53 @@
 #    Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
 
 import plac
+import urllib2
+import base64
+import logging
 
-def strato_ddns_updater():
-    pass
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+logger.addHandler(ch)
+
+@plac.annotations(hostname=("The DDNS hostname to be updated", "positional"),
+    username=("The strato username", "positional"),
+    password=("The strato DDNS password", "positional"),
+    no_mx=("Setting MX entry is skipped if flag is set", "flag"),
+    base_url=("Overwrite the base URL of the strato service", "option"),
+)
+def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="https://dyndns.strato.com/nic/update"):
+    dyndns_response = urllib2.urlopen("http://ipecho.net/plain").readline().strip()
+    external_ip = dyndns_response
+
+    # Create an OpenerDirector with support for Basic HTTP Authentication...
+    auth_handler = urllib2.HTTPBasicAuthHandler()
+    auth_handler.add_password(realm='strato DDSN updater',
+                              uri=base_url,
+                              user=username,
+                              passwd=password)
+    opener = urllib2.build_opener(auth_handler)
+    # ...and install it globally so it can be used with urlopen.
+    urllib2.install_opener(opener)
+
+    if no_mx is False:
+        mx_str = "&mx=%s" % (hostname, )
+    else:
+        mx_str = ""
+
+    request = urllib2.Request("%s?hostname=%s%s&myip=%s&mxback=NO" % (base_url, hostname, mx_str, external_ip, ))
+    # You need the replace to handle encodestring adding a trailing newline
+    # (https://docs.python.org/2/library/base64.html#base64.encodestring)
+    base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
+    request.add_header("Authorization", "Basic %s" % base64string)
+    result = urllib2.urlopen(request).strip()
+    logger.info("strato update site returned '%s'" % (result, ))
+    if not result.startswith("good "):
+        raise Error("request failed because response doesn't start with 'good'")
+
+def main():
+    plac.call(strato_ddns_updater)
 
 if __name__ == "__main__":
-    strato_ddns_updater()
+    main()

@@ -73,6 +73,7 @@ def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="htt
     if not result.startswith("good "):
         raise Error("request failed because response doesn't start with 'good'")
 
+# necessary to allow setup of `setuptools` `entry_points`
 def main():
     plac.call(strato_ddns_updater)
 

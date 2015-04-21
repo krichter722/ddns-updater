@@ -68,7 +68,7 @@ def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="htt
     # (https://docs.python.org/2/library/base64.html#base64.encodestring)
     base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
     request.add_header("Authorization", "Basic %s" % base64string)
-    result = urllib2.urlopen(request).strip()
+    result = urllib2.urlopen(request).readline().strip()
     logger.info("strato update site returned '%s'" % (result, ))
     if not result.startswith("good "):
         raise Error("request failed because response doesn't start with 'good'")

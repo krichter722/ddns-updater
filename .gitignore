@@ -4,3 +4,5 @@ strato_ddns_updater_globals.py
 # build files and binaries
 build/
 *.pyc
+dist/
+strato_ddns_updater.egg-info/

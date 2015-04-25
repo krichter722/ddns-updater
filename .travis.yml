@@ -5,6 +5,7 @@ before_install:
   - sudo apt-get install python-cheetah
 
 install:
+  - pip install --upgrade pip
   - pip install .
 
 script:

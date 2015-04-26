@@ -1,7 +1,9 @@
 language: python
 
+# need to install cheetah for both root and non-root user (or adjust PYTHONPATH)
 install:
   - sudo pip install --upgrade pip
+  - pip install cheetah
   - sudo pip install cheetah
   - python setup.py build
   - sudo python setup.py install

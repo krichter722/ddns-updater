@@ -10,3 +10,4 @@ install:
 
 script:
   - python setup.py test
+  - sudo modprobe nfsd

@@ -23,5 +23,5 @@
 #    Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
 
 app_name = "strato-ddns-updater"
-app_version = (1, 3, 7)
+app_version = (1, 3, 8)
 app_version_string = str.join(".", [str(i) for i in app_version])

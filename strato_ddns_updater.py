@@ -128,4 +128,7 @@ def main():
     plac.call(strato_ddns_updater)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except:
+        logger.exception()

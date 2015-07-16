@@ -27,6 +27,8 @@
 #    Sie sollten eine Kopie der GNU General Public License zusammen mit diesem
 #    Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
 
+# There's currently no option to omit logging to file.
+
 import plac
 import urllib2
 import base64
@@ -47,60 +49,79 @@ logger.addHandler(ch)
     base_url=("Overwrite the base URL of the strato service", "option"),
     check_file_path=("Path to the file where the result of the last IP check is stored", "option"),
     check_interval=("The time in seconds between two checks of the current external IP (this is time your DDNS isn't reachable in the worst case) (don't set this value too low because the service to check for external IP (currently ipecho.net) might block you if you send too many requests)", "option"),
-    daemon=("Run as daemon", "flag"),
+    loop=("Run as a loop with check_interval between runs (uses check_file to minimize requests to IP echo service)", "flag"),
+    daemon=("Run as daemon (implies loop)", "flag"),
+    log_dir=("The directory where to create log files (will be created if it doesn't exist) (expects permissions for creation and writing to be given)", "option"),
 )
-def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="https://dyndns.strato.com/nic/update", check_file_path="/tmp/strato-ddns-updater.dat", check_interval=60*15, daemon=False):
+def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="https://dyndns.strato.com/nic/update", check_file_path="/tmp/strato-ddns-updater.dat", check_interval=60*15, daemon=False, loop=False, log_dir="/var/log/strato-ddns-updater"):
     try:
         check_interval_float = float(check_interval)
     except ValueError:
         raise ValueError("check interval '%s' could not be parsed as float" % (str(check_interval), ))
-    def __loop__():
-        while True:
-            dyndns_response = urllib2.urlopen("http://ipecho.net/plain").readline().strip()
-            external_ip = dyndns_response
+    if not os.path.exists(log_dir):
+        logger.info("creating inexisting log directory '%s'" % (log_dir,))
+        os.makedirs(log_dir)
+    elif os.path.isfile(log_dir):
+        raise ValueError("log_dir '%s' is an existing file, but needs to be an existing directory or point to an inexisting path" % (log_dir,))
+    logger_file_handler = logging.FileHandler(filename=os.path.join(log_dir, "strato-ddns-updater.log"), mode='a', encoding=None, delay=False)
+    logger.addHandler(logger_file_handler)
+    if daemon:
+        loop = True
+    def __update__():
+        dyndns_response = urllib2.urlopen("http://ipecho.net/plain").readline().strip()
+        external_ip = dyndns_response
+        if loop:
             if os.path.exists(check_file_path):
                 check_file = open(check_file_path)
                 last_external_ip = check_file.readline().strip()
                 if last_external_ip == external_ip:
                     time.sleep(check_interval_float)
-                    continue
+                    return False
                 check_file.close()
             check_file = open(check_file_path, "w")
             check_file.write(external_ip)
             check_file.flush()
             check_file.close()
 
-            # Create an OpenerDirector with support for Basic HTTP Authentication...
-            auth_handler = urllib2.HTTPBasicAuthHandler()
-            auth_handler.add_password(realm='strato DDSN updater',
-                                      uri=base_url,
-                                      user=username,
-                                      passwd=password)
-            opener = urllib2.build_opener(auth_handler)
-            # ...and install it globally so it can be used with urlopen.
-            urllib2.install_opener(opener)
+        # Create an OpenerDirector with support for Basic HTTP Authentication...
+        auth_handler = urllib2.HTTPBasicAuthHandler()
+        auth_handler.add_password(realm='strato DDSN updater',
+                                  uri=base_url,
+                                  user=username,
+                                  passwd=password)
+        opener = urllib2.build_opener(auth_handler)
+        # ...and install it globally so it can be used with urlopen.
+        urllib2.install_opener(opener)
 
-            if no_mx is False:
-                mx_str = "&mx=%s" % (hostname, )
-            else:
-                mx_str = ""
+        if no_mx is False:
+            mx_str = "&mx=%s" % (hostname, )
+        else:
+            mx_str = ""
 
-            request = urllib2.Request("%s?hostname=%s%s&myip=%s&mxback=NO" % (base_url, hostname, mx_str, external_ip, ))
-            # You need the replace to handle encodestring adding a trailing newline
-            # (https://docs.python.org/2/library/base64.html#base64.encodestring)
-            base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
-            request.add_header("Authorization", "Basic %s" % base64string)
-            result = urllib2.urlopen(request).readline().strip()
-            logger.info("strato update site returned '%s'" % (result, ))
-            if not result.startswith("good "):
-                raise Error("request failed because response doesn't start with 'good'")
-    if daemon:
-        pid = os.fork()
-        if pid == 0:
-            __loop__()
-        # don't care about parent
+        request = urllib2.Request("%s?hostname=%s%s&myip=%s&mxback=NO" % (base_url, hostname, mx_str, external_ip, ))
+        # You need the replace to handle encodestring adding a trailing newline
+        # (https://docs.python.org/2/library/base64.html#base64.encodestring)
+        base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
+        request.add_header("Authorization", "Basic %s" % base64string)
+        result = urllib2.urlopen(request).readline().strip()
+        logger.info("strato update site returned '%s'" % (result, ))
+        if not result.startswith("good "):
+            raise Error("request failed because response doesn't start with 'good'")
+        return True
+    def __loop__():
+        while __update__():
+            continue
+    if not loop:
+        __update__()
     else:
-        __loop__()
+        if daemon:
+            pid = os.fork()
+            if pid == 0:
+                __loop__()
+            # don't care about parent
+            os.exit(0)
+        else:
+            __loop__()
 
 # necessary to allow setup of `setuptools` `entry_points`
 def main():

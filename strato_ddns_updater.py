@@ -28,6 +28,12 @@
 #    Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
 
 # There's currently no option to omit logging to file.
+#
+# Multiple invokations in a short range of time can cause the DDNS service
+# (strato) to reject further update requests for a certain time. This is a
+# mechanism by strato to prevent abuse. The caller is responsible to deal with
+# this or use the built-in functions controlled by the settings
+# `check_interval`, `loop` and `daemon`.
 
 import plac
 import urllib2
@@ -52,8 +58,9 @@ logger.addHandler(ch)
     loop=("Run as a loop with check_interval between runs (uses check_file to minimize requests to IP echo service)", "flag"),
     daemon=("Run as daemon (implies loop)", "flag"),
     log_dir=("The directory where to create log files (will be created if it doesn't exist) (expects permissions for creation and writing to be given)", "option"),
+    debug=("Log debug information", "flag")
 )
-def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="https://dyndns.strato.com/nic/update", check_file_path="/tmp/strato-ddns-updater.dat", check_interval=60*15, daemon=False, loop=False, log_dir="/var/log/strato-ddns-updater"):
+def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="https://dyndns.strato.com/nic/update", check_file_path="/tmp/strato-ddns-updater.dat", check_interval=60*15, daemon=False, loop=False, log_dir="/var/log/strato-ddns-updater", debug=False):
     try:
         check_interval_float = float(check_interval)
     except ValueError:
@@ -65,19 +72,28 @@ def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="htt
         raise ValueError("log_dir '%s' is an existing file, but needs to be an existing directory or point to an inexisting path" % (log_dir,))
     logger_file_handler = logging.FileHandler(filename=os.path.join(log_dir, "strato-ddns-updater.log"), mode='a', encoding=None, delay=False)
     logger.addHandler(logger_file_handler)
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        ch.setLevel(logging.DEBUG)
+        logger_file_handler.setLevel(logging.DEBUG)
     if daemon:
         loop = True
-    def __update__():
+    # @return `True` if an actual request has been made, `False` if the stored last
+    # result for the public IP query (in the check file) is identical to the current one (only run
+    # if `use_check_file` is `True`).
+    def __update__(use_check_file=loop):
         dyndns_response = urllib2.urlopen("http://ipecho.net/plain").readline().strip()
         external_ip = dyndns_response
-        if loop:
+        if use_check_file:
+            # only check last result if loop is True (otherwise there's no last result stored anyway and sleeping doesn't make sense neither)
             if os.path.exists(check_file_path):
                 check_file = open(check_file_path)
                 last_external_ip = check_file.readline().strip()
+                check_file.close()
                 if last_external_ip == external_ip:
+                    logger.debug("result of external IP check is identical to the last result, sleeping check interval (%s s)" % (str(check_interval_float),))
                     time.sleep(check_interval_float)
                     return False
-                check_file.close()
             check_file = open(check_file_path, "w")
             check_file.write(external_ip)
             check_file.flush()
@@ -109,8 +125,10 @@ def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="htt
             raise Error("request failed because response doesn't start with 'good'")
         return True
     def __loop__():
-        while __update__():
-            continue
+        while True:
+            # don't care about the return value of __update__ because it only
+            # indicates whether a request has been made or not
+            __update__()
     if not loop:
         __update__()
     else:

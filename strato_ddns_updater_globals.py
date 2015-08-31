@@ -25,3 +25,5 @@
 app_name = "strato-ddns-updater"
 app_version = (1, 3, 8)
 app_version_string = str.join(".", [str(i) for i in app_version])
+
+log_file_name = "strato-ddns-updater.log"

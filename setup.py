@@ -112,7 +112,7 @@ def systemd_service_install():
     if os.getenv("STRATO_HOSTNAME") is None:
         raise ValueError("must specify STRATO_HOSTNAME environment variable") # workaround until configuration file works
     if os.getenv("STRATO_USERNAME") is None:
-        raise ValueError("must specify STRATO_HOSTNAME environment variable") # workaround until configuration file works
+        raise ValueError("must specify STRATO_USERNAME environment variable") # workaround until configuration file works
     if os.getenv("STRATO_PASSWORD") is None:
         raise ValueError("must specify STRATO_PASSWORD environment variable") # workaround until configuration file works
     t.hostname = os.getenv("STRATO_HOSTNAME")

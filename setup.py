@@ -41,6 +41,7 @@ import logging
 import pwd
 import grp
 from  setuptools.command.install  import  install
+<<<<<<< HEAD
 
 git_default = "git"
 
@@ -63,6 +64,8 @@ t_file.write(str(t))
 t_file.flush()
 t_file.close()
 
+=======
+>>>>>>> 57d1e130d6716b1f2034b030b9b52bbe56845c82
 import strato_ddns_updater_globals
 
 logger = logging.getLogger(__name__)
@@ -168,7 +171,7 @@ t_file.close()
 
 setup(
     name = strato_ddns_updater_globals.app_name,
-    version = strato_ddns_updater_globals.app_version_string,
+    version_command=('git describe --tags', "pep440-git-local"),
     packages = ["."],
     install_requires = ["cheetah", "plac>=0.9.1"],
     entry_points={

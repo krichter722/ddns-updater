@@ -5,5 +5,4 @@ dist/
 strato_ddns_updater.egg-info/
 
 # generated files
-strato_ddns_updater_globals.py
 strato_ddns_updater.py

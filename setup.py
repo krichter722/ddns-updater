@@ -146,7 +146,7 @@ t_file.close()
 
 setup(
     name = strato_ddns_updater_globals.app_name,
-    version = strato_ddns_updater_globals.app_version_string,
+    version_command=('git describe --tags', "pep440-git-local"),
     packages = ["."],
     install_requires = ["cheetah", "plac>=0.9.1"],
     entry_points={

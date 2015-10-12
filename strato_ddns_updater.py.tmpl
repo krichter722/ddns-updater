@@ -145,9 +145,9 @@ def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="htt
         request.add_header("Authorization", "Basic %s" % base64string)
         logger.debug("making strato HTTP request to '%s'" % (request_url,))
         result = urllib2.urlopen(request).readline().strip()
-        logger.info("strato update site returned '%s'" % (result, ))
+        logger.info("strato update site returned response '%s'" % (result, ))
         if not result.startswith("good "):
-            raise Error("request failed because response doesn't start with 'good'")
+            raise Exception("request failed because response (see above) doesn't start with 'good'")
         return True
     def __loop__():
         while True:

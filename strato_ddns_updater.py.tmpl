@@ -97,16 +97,17 @@ def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="htt
         if loop is False:
             logger.warn("daemon implies loop")
         loop = True
-    \# @return `True` if an actual request has been made, `False` if the stored last
-    \# result for the public IP query (in the check file) is identical to the current one (only run
-    \# if `use_check_file` is `True`).
-    def __update__(use_check_file=loop):
+    # clear check file (reusage accross service restarts doesn't make too much sense except for debugging)
+    if os.path.exists(check_file_path):
+        os.remove(check_file_path)
+    \# @return a time to sleep in seconds
+    def __update__(loop=loop, check_interval_float=check_interval_float):
         echo_url = "http://ipecho.net/plain"
         logger.debug("checking external IP at '%s'" % (echo_url,))
         dyndns_response = urllib2.urlopen(echo_url).readline().strip()
         external_ip = dyndns_response
         logger.debug("external IP is '%s'" % (external_ip,))
-        if use_check_file:
+        if loop:
             \# only check last result if loop is True (otherwise there's no last result stored anyway and sleeping doesn't make sense neither)
             logger.debug("storing last check result in file '%s'" % (check_file_path,))
             if os.path.exists(check_file_path):
@@ -116,7 +117,7 @@ def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="htt
                 if last_external_ip == external_ip:
                     logger.debug("result of external IP check is identical to the last result, sleeping check interval (%s s)" % (str(check_interval_float),))
                     time.sleep(check_interval_float)
-                    return False
+                    return check_interval_float
             check_file = open(check_file_path, "w")
             check_file.write(external_ip)
             check_file.flush()
@@ -147,13 +148,19 @@ def strato_ddns_updater(hostname, username, password, no_mx=False, base_url="htt
         result = urllib2.urlopen(request).readline().strip()
         logger.info("strato update site returned response '%s'" % (result, ))
         if not result.startswith("good "):
-            raise Exception("request failed because response (see above) doesn't start with 'good'")
-        return True
+            if result.startswith("badauth "):
+                if loop:
+                    logger.warn("response was 'badauth', sleeping for 10 minutes")
+                else:
+                    logger.warn("response was 'badauth', aborting")
+                return 10*60 # wait 10 minutes after a badauth
+            else:
+                raise Exception("request failed because of unknown response (see above)")
+        return check_interval_float
     def __loop__():
+        check_interval_float0 = check_interval_float
         while True:
-            \# don't care about the return value of __update__ because it only
-            \# indicates whether a request has been made or not
-            __update__()
+            check_interval_float0 = __update__(check_interval_float=check_interval_float0)
     if not loop:
         __update__()
     else:

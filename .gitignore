@@ -2,7 +2,8 @@
 build/
 *.pyc
 dist/
-strato_ddns_updater.egg-info/
+ddns_updater.egg-info/
+.eggs/
 
 # generated files
-strato_ddns_updater.py
+ddns_updater/ddns_updater.py

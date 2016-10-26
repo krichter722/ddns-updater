@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -22,6 +22,6 @@
 #    Sie sollten eine Kopie der GNU General Public License zusammen mit diesem
 #    Programm erhalten haben. Wenn nicht, siehe <http://www.gnu.org/licenses/>.
 
-app_name = "strato-ddns-updater"
+app_name = "ddns-updater"
 
-log_file_name = "strato-ddns-updater.log"
+log_file_name = "ddns-updater.log"

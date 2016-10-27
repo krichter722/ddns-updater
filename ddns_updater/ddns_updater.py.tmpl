@@ -69,7 +69,9 @@ logger_stdout_handler.setFormatter(logger_formatter)
 logger.addHandler(logger_stdout_handler)
 
 check_file_path_default = "/tmp/strato-ddns-updater.dat"
-check_interval_default = 60*15
+check_interval_default_ipecho = 60*15
+check_interval_default_dig = 30
+check_interval_default = None
 daemon_default=False
 loop_default = False
 log_dir_default = "$log_file_dir_path"
@@ -101,7 +103,7 @@ class DDNSUpdaterCommandParser(object):
         no_mx=("Setting MX entry is skipped if flag is set", "flag"),
         base_url=("Overwrite the base URL of the strato service", "option"),
         check_file_path=("Path to the file where the result of the last IP check is stored", "option"),
-        check_interval=("The time in seconds between two checks of the current external IP (this is time your DDNS isn't reachable in the worst case) (don't set this value too low because the service to check for external IP (currently ipecho.net) might block you if you send too many requests)", "option"),
+        check_interval=("The time in seconds between two checks of the current external IP (this is time your DDNS isn't reachable in the worst case) (don't set this value too low because the service to check for external IP (currently ipecho.net) might block you if you send too many requests) (None indicates that a default for the IP service ought to be chosen)", "option"),
         loop=("Run as a loop with check_interval between runs (uses check_file to minimize requests to IP echo service)", "flag"),
         daemon=("Run as daemon (implies loop)", "flag"),
         log_dir=("The directory where to create log files (will be created if it doesn't exist) (expects permissions for creation and writing to be given)", "option"),
@@ -204,7 +206,16 @@ class DDNSUpdater(object):
     ):
         super(DDNSUpdater, self).__init__()
         self.check_file_path = check_file_path
-        self.check_interval = check_interval
+        if check_interval != None:
+            self.check_interval = check_interval
+        else:
+            if ip_service == ip_service_ipecho:
+                self.check_interval = check_interval_default_ipecho
+            elif ip_service == ip_service_dig:
+                self.check_interval = check_interval_default_dig
+            else:
+                raise ValueError("IP service '%s' isn't supported" % (self.ip_service,))
+        logger.debug("using check interval '%s'" % (str(check_interval),))
         self.daemon = daemon
         self.loop = loop
         self.log_dir = log_dir
